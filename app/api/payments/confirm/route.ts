@@ -18,9 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Confirmer le paiement avec Stripe
-    const paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId, {
-      payment_method: paymentMethodId,
-    })
+    const paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId)
 
     if (paymentIntent.status === 'succeeded') {
       // Enregistrer le paiement dans votre base de données
