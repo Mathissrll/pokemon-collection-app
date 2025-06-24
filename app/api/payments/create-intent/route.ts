@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import Stripe from 'stripe'
 
 // En production, installez Stripe : npm install stripe
-// import Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-05-28.basil',
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,17 +19,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // En production, utilisez Stripe :
-    /*
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: '2023-10-16',
-    })
-
+    // Créer une vraie intention de paiement Stripe
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Stripe utilise les centimes
       currency,
       automatic_payment_methods: {
         enabled: true,
+      },
+      metadata: {
+        plan: 'premium',
+        userId: 'demo-user', // En production, utiliser l'ID utilisateur réel
       },
     })
 
@@ -36,18 +39,6 @@ export async function POST(request: NextRequest) {
       status: paymentIntent.status,
       client_secret: paymentIntent.client_secret,
     })
-    */
-
-    // Simulation pour la démo
-    const mockPaymentIntent = {
-      id: `pi_${Math.random().toString(36).substr(2, 9)}`,
-      amount: Math.round(amount * 100),
-      currency,
-      status: 'requires_payment_method',
-      client_secret: `pi_${Math.random().toString(36).substr(2, 9)}_secret_${Math.random().toString(36).substr(2, 9)}`,
-    }
-
-    return NextResponse.json(mockPaymentIntent)
   } catch (error) {
     console.error('Erreur création intention de paiement:', error)
     return NextResponse.json(

@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-05-28.basil',
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,12 +17,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // En production, utilisez Stripe :
-    /*
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: '2023-10-16',
-    })
-
+    // Confirmer le paiement avec Stripe
     const paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId, {
       payment_method: paymentMethodId,
     })
@@ -25,33 +25,20 @@ export async function POST(request: NextRequest) {
     if (paymentIntent.status === 'succeeded') {
       // Enregistrer le paiement dans votre base de données
       // Mettre à jour le statut de l'utilisateur vers Premium
-      
-      return NextResponse.json({ success: true })
-    } else {
-      return NextResponse.json(
-        { error: 'Paiement échoué' },
-        { status: 400 }
-      )
-    }
-    */
-
-    // Simulation pour la démo
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Simuler un délai
-
-    // Simuler un succès (90% de chance)
-    const success = Math.random() > 0.1
-
-    if (success) {
-      // En production, enregistrer dans une vraie base de données
-      console.log('Paiement simulé réussi:', paymentIntentId)
+      console.log('Paiement réussi:', paymentIntent.id)
       
       return NextResponse.json({ 
         success: true,
-        message: 'Paiement confirmé avec succès'
+        message: 'Paiement confirmé avec succès',
+        paymentIntent: {
+          id: paymentIntent.id,
+          amount: paymentIntent.amount,
+          status: paymentIntent.status,
+        }
       })
     } else {
       return NextResponse.json(
-        { error: 'Paiement refusé par la banque' },
+        { error: 'Paiement échoué', status: paymentIntent.status },
         { status: 400 }
       )
     }
