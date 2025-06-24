@@ -361,7 +361,7 @@ export default function CollectionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-8">
       <Header title="Ma Collection" />
       <main className="max-w-6xl mx-auto py-8 px-2">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
@@ -442,7 +442,7 @@ export default function CollectionPage() {
         </div>
 
         {/* Tableau de collection */}
-        <div className="overflow-x-auto rounded-lg shadow bg-white">
+        <div className="overflow-auto rounded-lg shadow bg-white max-h-[70vh]">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-100 dark:bg-gray-800">
               <tr>
@@ -451,7 +451,6 @@ export default function CollectionPage() {
                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Qté</th>
                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Langue</th>
                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Prix d'achat</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Valeur estimée</th>
                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Statut</th>
                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Actions</th>
               </tr>
@@ -504,7 +503,6 @@ export default function CollectionPage() {
                     </td>
                     <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{LANGUAGES.find(l => l.code === item.language)?.name || item.language}</td>
                     <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{item.purchasePrice ? item.purchasePrice.toFixed(2) + " €" : "-"}</td>
-                    <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{item.estimatedValue ? item.estimatedValue.toFixed(2) + " €" : "-"}</td>
                     <td className="px-4 py-2">
                       {item.isSold ? (
                         <span className="inline-block px-2 py-1 text-xs rounded bg-red-600/10 text-red-800 dark:bg-red-400/20 dark:text-red-200">Vendu</span>

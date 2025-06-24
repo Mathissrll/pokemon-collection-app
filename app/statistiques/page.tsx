@@ -15,85 +15,37 @@ import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } fro
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
 export default function StatistiquesPage() {
-  const [stats, setStats] = useState<CollectionStats>({
-    totalItems: 0,
-    totalInvested: 0,
-    totalEstimatedValue: 0,
-    profitLoss: 0,
-    profitLossPercentage: 0,
-  })
+  const [invested, setInvested] = useState(0)
+  const [sold, setSold] = useState(0)
   const [items, setItems] = useState<PokemonItem[]>([])
-  const [typeStats, setTypeStats] = useState<Record<string, { count: number; value: number }>>({})
-  const [monthlyStats, setMonthlyStats] = useState<Record<string, number>>({})
-  const [chartData, setChartData] = useState<Array<{ month: string; invested: number; value: number; count: number }>>(
-    [],
-  )
+  const [chartData, setChartData] = useState<Array<{ month: string; invested: number; sold: number; stock: number }>>([])
 
   useEffect(() => {
     const collection = LocalStorage.getCollection()
-    const extendedStats = calculateStats(collection)
-    setStats(extendedStats)
     setItems(collection)
-    calculateTypeStats(collection)
-    calculateMonthlyStats(collection)
-    setChartData(calculateChartData(collection))
+    setInvested(collection.reduce((sum, item) => sum + item.purchasePrice * (item.quantity || 1), 0))
+    setSold(collection.filter(i => i.isSold).reduce((sum, item) => sum + (item.saleRecord?.salePrice || 0), 0))
+    setChartData(generateChartData(collection))
   }, [])
 
-  const calculateTypeStats = (collection: PokemonItem[]) => {
-    const typeData: Record<string, { count: number; value: number }> = {}
-
+  // Générer les données pour les graphiques
+  function generateChartData(collection: PokemonItem[]) {
+    // Grouper par mois d'achat
+    const monthly: Record<string, { invested: number; sold: number; stock: number }> = {}
+    let stock = 0
     collection.forEach((item) => {
-      if (!typeData[item.type]) {
-        typeData[item.type] = { count: 0, value: 0 }
-      }
-      typeData[item.type].count++
-      typeData[item.type].value += item.estimatedValue
+      const month = new Date(item.purchaseDate).toLocaleDateString("fr-FR", { year: "numeric", month: "short" })
+      if (!monthly[month]) monthly[month] = { invested: 0, sold: 0, stock: 0 }
+      monthly[month].invested += item.purchasePrice * (item.quantity || 1)
+      if (item.isSold) monthly[month].sold += item.saleRecord?.salePrice || 0
     })
-
-    setTypeStats(typeData)
-  }
-
-  const calculateMonthlyStats = (collection: PokemonItem[]) => {
-    const monthlyData: Record<string, number> = {}
-
-    collection.forEach((item) => {
-      const month = new Date(item.purchaseDate).toLocaleDateString("fr-FR", {
-        year: "numeric",
-        month: "long",
-      })
-      monthlyData[month] = (monthlyData[month] || 0) + item.purchasePrice
+    // Calculer le stock cumulé
+    let runningStock = 0
+    Object.keys(monthly).sort().forEach(month => {
+      runningStock += monthly[month].invested > 0 ? 1 : 0
+      monthly[month].stock = runningStock
     })
-
-    setMonthlyStats(monthlyData)
-  }
-
-  const calculateChartData = (collection: PokemonItem[]) => {
-    const monthlyData: Record<string, { invested: number; value: number; count: number }> = {}
-
-    collection.forEach((item) => {
-      const month = new Date(item.purchaseDate).toLocaleDateString("fr-FR", {
-        year: "numeric",
-        month: "short",
-      })
-
-      if (!monthlyData[month]) {
-        monthlyData[month] = { invested: 0, value: 0, count: 0 }
-      }
-
-      monthlyData[month].invested += item.purchasePrice
-      monthlyData[month].value += item.estimatedValue
-      monthlyData[month].count++
-    })
-
-    return Object.entries(monthlyData)
-      .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
-      .slice(-12) // 12 derniers mois
-      .map(([month, data]) => ({
-        month,
-        invested: data.invested,
-        value: data.value,
-        count: data.count,
-      }))
+    return Object.entries(monthly).map(([month, data]) => ({ month, ...data }))
   }
 
   const topPerformers = items
@@ -110,86 +62,44 @@ export default function StatistiquesPage() {
       <Header title="Statistiques" />
 
       <div className="py-6 space-y-6">
-        {/* Vue d'ensemble */}
         <div className="grid grid-cols-2 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                Total objets
+                <Euro className="h-4 w-4" />
+                Investissement total
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalItems}</div>
+              <div className="text-2xl font-bold">{formatCurrency(invested)}</div>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Euro className="h-4 w-4" />
-                Investi
+                <DollarSign className="h-4 w-4" />
+                Ventes totales
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-xl font-bold">{formatCurrency(stats.totalInvested)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(sold)}</div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Performance globale */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {stats.profitLoss >= 0 ? (
-                <TrendingUp className="h-5 w-5 text-green-600" />
-              ) : (
-                <TrendingDown className="h-5 w-5 text-red-600" />
-              )}
-              Performance globale
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span>Valeur estimée:</span>
-              <span className="font-bold">{formatCurrency(stats.totalEstimatedValue)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span>Plus/Moins-value:</span>
-              <span className={`font-bold ${stats.profitLoss >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {formatCurrency(stats.profitLoss)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span>Variation:</span>
-              <span className={`font-bold ${stats.profitLoss >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {stats.profitLossPercentage.toFixed(1)}%
-              </span>
-            </div>
-            <Progress value={Math.max(0, Math.min(100, 50 + stats.profitLossPercentage))} className="h-2" />
-          </CardContent>
-        </Card>
-
-        {/* Graphique d'évolution */}
+        {/* Graphique Investissement vs Ventes */}
         {chartData.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
-                Évolution de la collection
+                Investissement vs Ventes (par mois)
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ChartContainer
                 config={{
-                  invested: {
-                    label: "Investi",
-                    color: "hsl(var(--chart-1))",
-                  },
-                  value: {
-                    label: "Valeur",
-                    color: "hsl(var(--chart-2))",
-                  },
+                  invested: { label: "Investi", color: "#2563eb" },
+                  sold: { label: "Vendu", color: "#22c55e" },
                 }}
                 className="h-[300px]"
               >
@@ -198,83 +108,40 @@ export default function StatistiquesPage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line
-                      type="monotone"
-                      dataKey="invested"
-                      stroke="var(--color-invested)"
-                      name="Investi (€)"
-                      strokeWidth={2}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke="var(--color-value)"
-                      name="Valeur (€)"
-                      strokeWidth={2}
-                    />
+                    <Line type="monotone" dataKey="invested" stroke="#2563eb" strokeWidth={2} />
+                    <Line type="monotone" dataKey="sold" stroke="#22c55e" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
           </Card>
         )}
-
-        {/* Nouvelles statistiques de vente */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Graphique Evolution du stock */}
+        {chartData.length > 0 && (
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Vendus
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Evolution du stock (par mois)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalSold || 0}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                CA Réalisé
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold">{formatCurrency(stats.totalSalesRevenue || 0)}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Profit réalisé */}
-        {stats.realizedProfitLoss !== undefined && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Profit Réalisé
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div
-                className={`text-2xl font-bold ${stats.realizedProfitLoss >= 0 ? "text-green-600" : "text-red-600"}`}
+              <ChartContainer
+                config={{ stock: { label: "Stock", color: "#f59e42" } }}
+                className="h-[300px]"
               >
-                {formatCurrency(stats.realizedProfitLoss)}
-              </div>
-              <div className="text-sm text-muted-foreground">Sur les ventes effectuées</div>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Line type="monotone" dataKey="stock" stroke="#f59e42" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </CardContent>
           </Card>
         )}
-
-        {/* Répartition par catégorie */}
-        <CategoryStats items={items} totalValue={stats.totalEstimatedValue} />
-
-        {/* Répartition par langue */}
-        <LanguageStats items={items} totalValue={stats.totalEstimatedValue} />
-
-        {/* Statistiques des photos */}
-        <PhotoStats items={items} />
 
         {/* Top performers */}
         {topPerformers.length > 0 && (
@@ -309,36 +176,7 @@ export default function StatistiquesPage() {
           </Card>
         )}
 
-        {/* Achats mensuels */}
-        {Object.keys(monthlyStats).length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Achats par mois
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {Object.entries(monthlyStats)
-                .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
-                .slice(-6)
-                .map(([month, amount]) => {
-                  const percentage = (amount / Math.max(...Object.values(monthlyStats))) * 100
-                  return (
-                    <div key={month} className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span>{month}</span>
-                        <span className="font-medium">{formatCurrency(amount)}</span>
-                      </div>
-                      <Progress value={percentage} className="h-1" />
-                    </div>
-                  )
-                })}
-            </CardContent>
-          </Card>
-        )}
-
-        {stats.totalItems === 0 && (
+        {items.length === 0 && (
           <Card>
             <CardContent className="p-6 text-center">
               <div className="text-6xl mb-4">📊</div>
