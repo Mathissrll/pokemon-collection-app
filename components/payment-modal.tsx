@@ -398,41 +398,6 @@ export function PaymentModal({ isOpen, onClose, onSuccess }: PaymentModalProps) 
             <Shield className="h-3 w-3 inline mr-1" />
             Paiement sécurisé par SSL - Vos données sont protégées
           </div>
-
-          {/* Liste des paiements Stripe */}
-          <div className="mt-6">
-            <h3 className="font-semibold mb-2">Historique des paiements Stripe (test ou live)</h3>
-            <Button onClick={fetchStripePayments} size="sm" className="mb-2">Rafraîchir</Button>
-            {loadingStripePayments ? (
-              <div>Chargement...</div>
-            ) : (
-              <div className="overflow-x-auto max-h-48">
-                <table className="min-w-full text-xs border">
-                  <thead>
-                    <tr>
-                      <th className="px-2 py-1 border">ID</th>
-                      <th className="px-2 py-1 border">Montant</th>
-                      <th className="px-2 py-1 border">Statut</th>
-                      <th className="px-2 py-1 border">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stripePayments.length === 0 && (
-                      <tr><td colSpan={4} className="text-center py-2">Aucun paiement Stripe</td></tr>
-                    )}
-                    {stripePayments.map((p) => (
-                      <tr key={p.id}>
-                        <td className="px-2 py-1 border">{p.id}</td>
-                        <td className="px-2 py-1 border">{(p.amount / 100).toFixed(2)}€</td>
-                        <td className="px-2 py-1 border">{p.status}</td>
-                        <td className="px-2 py-1 border">{new Date(p.created * 1000).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
         </div>
       </DialogContent>
     </Dialog>

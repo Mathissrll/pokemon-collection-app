@@ -21,10 +21,11 @@ export async function POST(request: NextRequest) {
 
     // Créer une vraie intention de paiement Stripe
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Stripe utilise les centimes
+      amount: amount, // Déjà en centimes
       currency,
       automatic_payment_methods: {
         enabled: true,
+        allow_redirects: 'never',
       },
       metadata: {
         plan: 'premium',
