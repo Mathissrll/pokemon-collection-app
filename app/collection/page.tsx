@@ -268,161 +268,145 @@ export default function CollectionPage() {
   }
 
   return (
-    <div className="container mx-auto px-4">
+    <div className="min-h-screen bg-gray-50">
       <Header title="Ma Collection" />
-
-      {/* Filtres et actions */}
-      <div className="mb-6 space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <main className="max-w-6xl mx-auto py-8 px-2">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+          <div className="flex flex-col gap-2 w-full md:w-auto">
+            <div className="flex gap-2 items-center">
               <Input
-                placeholder="Rechercher un objet..."
+                placeholder="Rechercher..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="w-56"
               />
+              <Button variant="outline" onClick={loadCollection} title="Rafraîchir la collection">
+                <RefreshCw size={18} />
+              </Button>
+            </div>
+            <div className="flex gap-2 mt-2">
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous types</SelectItem>
+                  <SelectItem value="carte">Carte</SelectItem>
+                  <SelectItem value="scellé">Scellé</SelectItem>
+                  <SelectItem value="autre">Autre</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous statuts</SelectItem>
+                  <SelectItem value="available">Disponible</SelectItem>
+                  <SelectItem value="sold">Vendu</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={languageFilter} onValueChange={setLanguageFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Langue" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes langues</SelectItem>
+                  {LANGUAGES.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code}>{lang.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Trier par" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date">Date d'achat</SelectItem>
+                  <SelectItem value="name">Nom</SelectItem>
+                  <SelectItem value="price">Prix d'achat</SelectItem>
+                  <SelectItem value="value">Valeur estimée</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={handleUpdateAllPrices} disabled={isUpdatingPrices} variant="outline">
-              {isUpdatingPrices ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Mise à jour...
-                </>
+          <div className="flex gap-2 mt-4 md:mt-0">
+            <Button asChild>
+              <Link href="/ajouter">
+                <Plus className="mr-2 h-4 w-4" /> Ajouter
+              </Link>
+            </Button>
+            <Button variant="outline" onClick={handleExport} title="Exporter en CSV">
+              <Download className="mr-2 h-4 w-4" /> Exporter
+            </Button>
+          </div>
+        </div>
+
+        {/* Tableau de collection */}
+        <div className="overflow-x-auto rounded-lg shadow bg-white">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Photo</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Nom</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Qté</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Langue</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Prix d'achat</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Valeur estimée</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Statut</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredItems.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-gray-400">
+                    <AlertCircle className="inline mr-2" />Aucun objet trouvé dans la collection.
+                  </td>
+                </tr>
               ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Mettre à jour les prix
-                </>
+                filteredItems.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50 transition">
+                    <td className="px-4 py-2">
+                      {item.photo ? (
+                        <img src={item.photo} alt={item.name} className="w-12 h-12 object-cover rounded shadow" />
+                      ) : (
+                        <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-gray-400">
+                          <Package />
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 font-medium text-gray-900">{item.name}</td>
+                    <td className="px-4 py-2 text-center">1</td>
+                    <td className="px-4 py-2">{LANGUAGES.find(l => l.code === item.language)?.name || item.language}</td>
+                    <td className="px-4 py-2">{item.purchasePrice ? item.purchasePrice.toFixed(2) + " €" : "-"}</td>
+                    <td className="px-4 py-2">{item.estimatedValue ? item.estimatedValue.toFixed(2) + " €" : "-"}</td>
+                    <td className="px-4 py-2">
+                      {item.isSold ? (
+                        <span className="inline-block px-2 py-1 text-xs rounded bg-red-100 text-red-700">Vendu</span>
+                      ) : (
+                        <span className="inline-block px-2 py-1 text-xs rounded bg-green-100 text-green-700">Disponible</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 flex gap-2">
+                      <Button size="icon" variant="ghost" onClick={() => {/* TODO: édition inline */}} title="Éditer">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L7.5 19.788l-4 1 1-4 13.362-13.3z" />
+                        </svg>
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleDelete(item.id)} title="Supprimer">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </Button>
+                    </td>
+                  </tr>
+                ))
               )}
-            </Button>
-            <Button onClick={handleExport} variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Exporter
-            </Button>
-            <Link href="/ajouter">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter
-              </Button>
-            </Link>
-          </div>
+            </tbody>
+          </table>
         </div>
-
-        <div className="flex flex-wrap gap-4">
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les types</SelectItem>
-              <SelectItem value="booster-pack">🎴 Booster</SelectItem>
-              <SelectItem value="booster-box">📦 Bundle</SelectItem>
-              <SelectItem value="etb">🎁 Boîte d'Entraînement</SelectItem>
-              <SelectItem value="coffret">📦 Coffret</SelectItem>
-              <SelectItem value="single-card">🃏 Carte Individuelle</SelectItem>
-              <SelectItem value="autre">📋 Autre</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Statut" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              <SelectItem value="available">Disponible</SelectItem>
-              <SelectItem value="sold">Vendu</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={languageFilter} onValueChange={setLanguageFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Langue" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes les langues</SelectItem>
-              {Object.entries(LANGUAGES).map(([key, lang]) => (
-                <SelectItem key={key} value={key}>
-                  {lang.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Trier par" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="date">Date d'achat</SelectItem>
-              <SelectItem value="name">Nom</SelectItem>
-              <SelectItem value="price">Prix d'achat</SelectItem>
-              <SelectItem value="value">Valeur estimée</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Collection */}
-      {filteredItems.length === 0 ? (
-        <div className="text-center py-12">
-          <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">
-            {items.length === 0 ? "Votre collection est vide" : "Aucun objet trouvé"}
-          </h3>
-          <p className="text-muted-foreground mb-4">
-            {items.length === 0
-              ? "Commencez par ajouter votre premier objet à votre collection."
-              : "Essayez de modifier vos filtres de recherche."}
-          </p>
-          {items.length === 0 && (
-            <Link href="/ajouter">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter un objet
-              </Button>
-            </Link>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredItems.map((item) => (
-            <CollectionCard key={item.id} item={item} onDelete={handleDelete} onEdit={() => {}} />
-          ))}
-        </div>
-      )}
-
-      {/* Statistiques */}
-      {items.length > 0 && (
-        <div className="mt-8 p-4 bg-muted rounded-lg">
-          <h3 className="font-semibold mb-2">Statistiques</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">Total :</span>
-              <span className="ml-2 font-medium">{items.length}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Disponible :</span>
-              <span className="ml-2 font-medium">{items.filter((i) => !i.isSold).length}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Vendu :</span>
-              <span className="ml-2 font-medium">{items.filter((i) => i.isSold).length}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Valeur totale :</span>
-              <span className="ml-2 font-medium">
-                {items.reduce((sum, item) => sum + item.estimatedValue, 0).toFixed(2)}€
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+      </main>
     </div>
   )
 }

@@ -141,7 +141,12 @@ export default function AdminDashboard() {
       </div>
       {/* Gestion des utilisateurs */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Utilisateurs</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-semibold">Utilisateurs</h2>
+          <Button variant="outline" onClick={loadData} title="Rafraîchir la liste">
+            Rafraîchir
+          </Button>
+        </div>
         <div className="space-y-4">
           {users.length === 0 && <div className="text-muted-foreground">Aucun utilisateur</div>}
           {users.map((user) => (
