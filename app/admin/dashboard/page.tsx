@@ -70,6 +70,23 @@ export default function AdminDashboard() {
     })
   }
 
+  const handleUserAction = (userId: string, action: string) => {
+    const users = AuthService.getUsers()
+    const user = users[userId]
+    if (!user) return
+    if (action === "upgrade") {
+      user.plan = "premium"
+    } else if (action === "downgrade") {
+      user.plan = "free"
+    } else if (action === "delete") {
+      if (confirm("Êtes-vous sûr de vouloir supprimer cet utilisateur ?")) {
+        delete users[userId]
+      }
+    }
+    AuthService.saveUsers(users)
+    loadData()
+  }
+
   if (!AuthService.isAdmin()) {
     return <div>Accès non autorisé</div>
   }
@@ -121,6 +138,36 @@ export default function AdminDashboard() {
             </p>
           </CardContent>
         </Card>
+      </div>
+      {/* Gestion des utilisateurs */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Utilisateurs</h2>
+        <div className="space-y-4">
+          {users.length === 0 && <div className="text-muted-foreground">Aucun utilisateur</div>}
+          {users.map((user) => (
+            <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <p className="font-medium">{user.username}</p>
+                <p className="text-sm text-muted-foreground">{user.email}</p>
+                <p className="text-xs text-muted-foreground">Inscrit le {new Date(user.createdAt).toLocaleDateString()}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={user.plan === "premium" ? "default" : "secondary"}>
+                  {user.plan === "premium" ? "Premium" : "Gratuit"}
+                </Badge>
+                <div className="flex gap-1">
+                  {user.plan === "free" && (
+                    <Button size="sm" onClick={() => handleUserAction(user.id, "upgrade")}>Upgrade</Button>
+                  )}
+                  {user.plan === "premium" && (
+                    <Button size="sm" variant="outline" onClick={() => handleUserAction(user.id, "downgrade")}>Downgrade</Button>
+                  )}
+                  <Button size="sm" variant="destructive" onClick={() => handleUserAction(user.id, "delete")}>Supprimer</Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

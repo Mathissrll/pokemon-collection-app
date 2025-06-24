@@ -108,7 +108,7 @@ export function PaymentModal({ isOpen, onClose, onSuccess }: PaymentModalProps) 
     
     try {
       // Créer une intention de paiement
-      const paymentIntent = await PaymentService.createPaymentIntent(999, 'eur')
+      const paymentIntent = await PaymentService.createPaymentIntent(9.99, 'eur')
       
       // Simuler la confirmation du paiement
       const success = await PaymentService.confirmPayment(paymentIntent.id, 'pm_test_card')

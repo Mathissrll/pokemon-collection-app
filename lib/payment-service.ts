@@ -34,7 +34,7 @@ export class PaymentService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: amount, // On envoie le montant directement, sans multiplier par 100
+          amount: Math.round(amount * 100), // Stripe attend les centimes
           currency,
         }),
       })
