@@ -32,19 +32,19 @@ interface User {
   isAdmin?: boolean
 }
 
-interface Payment {
+interface StripePayment {
   id: string
-  userId: string
   amount: number
-  method: string
-  status: "pending" | "completed" | "failed"
-  date: string
-  userEmail: string
+  currency: string
+  status: string
+  created: number
+  receipt_email?: string
+  payment_method_types: string[]
 }
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([])
-  const [payments, setPayments] = useState<Payment[]>([])
+  const [payments, setPayments] = useState<StripePayment[]>([])
   const [stats, setStats] = useState({
     totalUsers: 0,
     premiumUsers: 0,
@@ -53,6 +53,7 @@ export default function AdminDashboard() {
     monthlyRevenue: 0,
     pendingPayments: 0
   })
+  const [loadingPayments, setLoadingPayments] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -65,50 +66,33 @@ export default function AdminDashboard() {
     loadData()
   }, [router])
 
-  const loadData = () => {
+  const loadData = async () => {
     // Charger les utilisateurs
     const allUsers = Object.values(AuthService.getUsers())
     setUsers(allUsers)
 
-    // Charger les paiements (simulation)
-    const mockPayments: Payment[] = [
-      {
-        id: "1",
-        userId: "user1",
-        amount: 9.99,
-        method: "card",
-        status: "completed",
-        date: new Date().toISOString(),
-        userEmail: "user1@example.com"
-      },
-      {
-        id: "2",
-        userId: "user2",
-        amount: 9.99,
-        method: "paypal",
-        status: "pending",
-        date: new Date(Date.now() - 86400000).toISOString(),
-        userEmail: "user2@example.com"
-      }
-    ]
-    setPayments(mockPayments)
-
-    // Calculer les statistiques
-    const premiumUsers = allUsers.filter(u => u.plan === "premium").length
-    const completedPayments = mockPayments.filter(p => p.status === "completed")
-    const totalRevenue = completedPayments.reduce((sum, p) => sum + p.amount, 0)
-    const monthlyRevenue = completedPayments
-      .filter(p => new Date(p.date).getMonth() === new Date().getMonth())
-      .reduce((sum, p) => sum + p.amount, 0)
-
-    setStats({
-      totalUsers: allUsers.length,
-      premiumUsers,
-      freeUsers: allUsers.length - premiumUsers,
-      totalRevenue,
-      monthlyRevenue,
-      pendingPayments: mockPayments.filter(p => p.status === "pending").length
-    })
+    // Charger les paiements Stripe
+    setLoadingPayments(true)
+    const res = await fetch('/api/admin/stripe-payments')
+    const data = await res.json()
+    setLoadingPayments(false)
+    if (data.payments) {
+      setPayments(data.payments)
+      // Calculer les stats à partir des paiements Stripe
+      const completedPayments = data.payments.filter((p: StripePayment) => p.status === "succeeded")
+      const totalRevenue = completedPayments.reduce((sum: number, p: StripePayment) => sum + p.amount / 100, 0)
+      const monthlyRevenue = completedPayments
+        .filter((p: StripePayment) => new Date(p.created * 1000).getMonth() === new Date().getMonth())
+        .reduce((sum: number, p: StripePayment) => sum + p.amount / 100, 0)
+      setStats({
+        totalUsers: allUsers.length,
+        premiumUsers: allUsers.filter(u => u.plan === "premium").length,
+        freeUsers: allUsers.filter(u => u.plan === "free").length,
+        totalRevenue,
+        monthlyRevenue,
+        pendingPayments: data.payments.filter((p: StripePayment) => p.status === "requires_payment_method").length
+      })
+    }
   }
 
   const handleUserAction = (userId: string, action: string) => {
@@ -159,6 +143,9 @@ export default function AdminDashboard() {
           Retour à l'app
         </Button>
       </div>
+      <Button onClick={loadData} disabled={loadingPayments} className="mb-4">
+        {loadingPayments ? 'Chargement...' : 'Rafraîchir les paiements Stripe'}
+      </Button>
 
       {/* Statistiques générales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -177,7 +164,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenus totaux</CardTitle>
+            <CardTitle className="text-sm font-medium">Revenus Stripe</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -215,6 +202,42 @@ export default function AdminDashboard() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Liste des paiements Stripe */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Paiements Stripe</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-200">
+            <thead>
+              <tr>
+                <th className="px-4 py-2 border">ID</th>
+                <th className="px-4 py-2 border">Montant</th>
+                <th className="px-4 py-2 border">Devise</th>
+                <th className="px-4 py-2 border">Statut</th>
+                <th className="px-4 py-2 border">Date</th>
+                <th className="px-4 py-2 border">Email reçu</th>
+                <th className="px-4 py-2 border">Méthode</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.length === 0 && (
+                <tr><td colSpan={7} className="text-center py-4">Aucun paiement Stripe trouvé</td></tr>
+              )}
+              {payments.map((p) => (
+                <tr key={p.id}>
+                  <td className="px-4 py-2 border">{p.id}</td>
+                  <td className="px-4 py-2 border">{(p.amount / 100).toFixed(2)}€</td>
+                  <td className="px-4 py-2 border">{p.currency}</td>
+                  <td className="px-4 py-2 border">{p.status}</td>
+                  <td className="px-4 py-2 border">{new Date(p.created * 1000).toLocaleString()}</td>
+                  <td className="px-4 py-2 border">{p.receipt_email || '-'}</td>
+                  <td className="px-4 py-2 border">{p.payment_method_types.join(', ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Onglets de gestion */}
@@ -293,25 +316,25 @@ export default function AdminDashboard() {
                 {payments.map((payment) => (
                   <div key={payment.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
-                      <p className="font-medium">{payment.userEmail}</p>
+                      <p className="font-medium">{payment.receipt_email || 'N/A'}</p>
                       <p className="text-sm text-muted-foreground">
-                        {payment.amount}€ - {payment.method}
+                        {payment.amount}€ - {payment.currency}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(payment.date).toLocaleDateString()}
+                        {new Date(payment.created * 1000).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge 
                         variant={
-                          payment.status === "completed" ? "default" : 
-                          payment.status === "pending" ? "secondary" : "destructive"
+                          payment.status === "succeeded" ? "default" : 
+                          payment.status === "requires_payment_method" ? "secondary" : "destructive"
                         }
                       >
-                        {payment.status === "completed" ? "Complété" : 
-                         payment.status === "pending" ? "En attente" : "Échoué"}
+                        {payment.status === "succeeded" ? "Complété" : 
+                         payment.status === "requires_payment_method" ? "En attente" : "Échoué"}
                       </Badge>
-                      {payment.status === "pending" && (
+                      {payment.status === "requires_payment_method" && (
                         <div className="flex gap-1">
                           <Button
                             size="sm"
