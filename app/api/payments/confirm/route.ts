@@ -42,18 +42,13 @@ export async function POST(request: NextRequest) {
     const success = Math.random() > 0.1
 
     if (success) {
-      // Enregistrer le paiement dans le localStorage pour la démo
-      const payments = JSON.parse(localStorage.getItem('pokemon-payments') || '[]')
-      payments.push({
-        id: paymentIntentId,
-        amount: 999, // 9.99€ en centimes
-        status: 'completed',
-        date: new Date().toISOString(),
-        method: 'card',
+      // En production, enregistrer dans une vraie base de données
+      console.log('Paiement simulé réussi:', paymentIntentId)
+      
+      return NextResponse.json({ 
+        success: true,
+        message: 'Paiement confirmé avec succès'
       })
-      localStorage.setItem('pokemon-payments', JSON.stringify(payments))
-
-      return NextResponse.json({ success: true })
     } else {
       return NextResponse.json(
         { error: 'Paiement refusé par la banque' },
