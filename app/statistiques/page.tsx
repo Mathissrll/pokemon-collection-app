@@ -58,11 +58,21 @@ export default function StatistiquesPage() {
     .slice(0, 3)
 
   return (
-    <div className="container mx-auto px-4 max-w-md">
+    <div className="container mx-auto px-4 max-w-4xl">
       <Header title="Statistiques" />
-
       <div className="py-6 space-y-6">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Objets
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{items.reduce((sum, item) => sum + (item.quantity || 1), 0)}</div>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -95,16 +105,16 @@ export default function StatistiquesPage() {
                 Investissement vs Ventes (par mois)
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="h-[350px] w-full">
               <ChartContainer
                 config={{
                   invested: { label: "Investi", color: "#2563eb" },
                   sold: { label: "Vendu", color: "#22c55e" },
                 }}
-                className="h-[300px]"
+                className="h-full w-full"
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
+                  <LineChart data={chartData} margin={{ left: 20, right: 20, top: 20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -125,13 +135,13 @@ export default function StatistiquesPage() {
                 Evolution du stock (par mois)
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="h-[350px] w-full">
               <ChartContainer
                 config={{ stock: { label: "Stock", color: "#f59e42" } }}
-                className="h-[300px]"
+                className="h-full w-full"
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
+                  <LineChart data={chartData} margin={{ left: 20, right: 20, top: 20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
