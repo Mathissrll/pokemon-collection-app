@@ -265,35 +265,61 @@ export default function CollectionPage() {
       skipEmptyLines: true,
       complete: async (results: ParseResult<any>) => {
         let count = 0
+        let ignored = 0
+        if (!results.data || !Array.isArray(results.data) || results.data.length === 0) {
+          toast({
+            title: "Erreur d'import",
+            description: "Le fichier est vide ou mal formaté.",
+            variant: "destructive",
+          })
+          return
+        }
         for (const row of results.data as any[]) {
-          if (!row.Nom) continue
-          // Adapter les champs selon le CSV attendu
-          const itemData = {
-            name: row.Nom,
-            type: row.Type || "autre",
-            language: row.Langue || "francais",
-            purchaseDate: row["Date d'achat"] || new Date().toISOString().split("T")[0],
-            purchasePrice: parseFloat(row["Prix d'achat"] || "0"),
-            estimatedValue: parseFloat(row["Valeur estimée"] || row["Prix d'achat"] || "0"),
-            condition: "neuf" as const,
-            photo: undefined,
-            storageLocation: row.Localisation || "",
-            notes: undefined,
-            isSold: row.Statut === "Vendu",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            quantity: parseInt(row["Quantité"] || "1"),
+          if (!row.Nom) {
+            ignored++
+            continue
           }
-          await LocalStorage.addItem(itemData)
-          count++
+          try {
+            const itemData = {
+              name: row.Nom,
+              type: row.Type || "autre",
+              language: row.Langue || "francais",
+              purchaseDate: row["Date d'achat"] || new Date().toISOString().split("T")[0],
+              purchasePrice: parseFloat(row["Prix d'achat"] || "0"),
+              estimatedValue: parseFloat(row["Valeur estimée"] || row["Prix d'achat"] || "0"),
+              condition: "neuf" as const,
+              photo: undefined,
+              storageLocation: row.Localisation || "",
+              notes: undefined,
+              isSold: row.Statut === "Vendu",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              quantity: parseInt(row["Quantité"] || "1"),
+            }
+            await LocalStorage.addItem(itemData)
+            count++
+          } catch (err) {
+            ignored++
+            console.error("Erreur lors de l'import d'une ligne:", row, err)
+          }
         }
         loadCollection()
-        toast({
-          title: "Import terminé",
-          description: `${count} objets importés ou fusionnés dans la collection.`,
-        })
+        if (count === 0) {
+          toast({
+            title: "Aucun objet importé",
+            description: ignored > 0 ? `${ignored} lignes ignorées (format ou champs manquants).` : "Vérifiez le format du fichier.",
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Import terminé",
+            description: `${count} objets importés ou fusionnés dans la collection.` + (ignored > 0 ? ` (${ignored} lignes ignorées)` : ""),
+            variant: ignored > 0 ? "default" : undefined,
+          })
+        }
       },
-      error: () => {
+      error: (err) => {
+        console.error("Erreur d'import CSV:", err)
         toast({
           title: "Erreur d'import",
           description: "Impossible de lire le fichier. Vérifiez le format.",
