@@ -28,6 +28,8 @@ export default function CollectionPage() {
   const [sortBy, setSortBy] = useState("date")
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isUpdatingPrices, setIsUpdatingPrices] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingQuantity, setEditingQuantity] = useState<number>(1)
 
   useEffect(() => {
     const checkAuth = () => {
@@ -236,6 +238,22 @@ export default function CollectionPage() {
     })
   }
 
+  const handleEditQuantity = (item: PokemonItem) => {
+    setEditingId(item.id)
+    setEditingQuantity(item.quantity || 1)
+  }
+
+  const handleSaveQuantity = (item: PokemonItem) => {
+    if (editingQuantity < 1) return
+    LocalStorage.updateItem(item.id, { quantity: editingQuantity })
+    setEditingId(null)
+    toast({
+      title: "Quantité modifiée",
+      description: `Nouvelle quantité : ${editingQuantity} pour ${item.name}`,
+    })
+    loadCollection()
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="container mx-auto px-4">
@@ -366,7 +384,7 @@ export default function CollectionPage() {
                 </tr>
               ) : (
                 filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50 transition">
+                  <tr key={item.id} className="hover:bg-gray-50 transition cursor-pointer" onClick={() => window.location.href = `/collection/${item.id}` }>
                     <td className="px-4 py-2">
                       {item.photo ? (
                         <img src={item.photo} alt={item.name} className="w-12 h-12 object-cover rounded shadow" />
@@ -377,7 +395,28 @@ export default function CollectionPage() {
                       )}
                     </td>
                     <td className="px-4 py-2 font-medium text-gray-900">{item.name}</td>
-                    <td className="px-4 py-2 text-center">1</td>
+                    <td className="px-4 py-2 text-center" onClick={(e) => { e.stopPropagation(); handleEditQuantity(item) }} style={{ cursor: "pointer" }}>
+                      {editingId === item.id ? (
+                        <input
+                          type="number"
+                          min={1}
+                          value={editingQuantity}
+                          autoFocus
+                          onChange={e => setEditingQuantity(Math.max(1, Number(e.target.value)))}
+                          onBlur={() => handleSaveQuantity(item)}
+                          onKeyDown={e => { if (e.key === "Enter") { (e.target as HTMLInputElement).blur() }}}
+                          className="w-16 px-2 py-1 border rounded text-center"
+                        />
+                      ) : (
+                        (item.quantity || 1) > 1 ? (
+                          <span className="inline-block px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 font-semibold">
+                            {item.quantity}
+                          </span>
+                        ) : (
+                          1
+                        )
+                      )}
+                    </td>
                     <td className="px-4 py-2">{LANGUAGES.find(l => l.code === item.language)?.name || item.language}</td>
                     <td className="px-4 py-2">{item.purchasePrice ? item.purchasePrice.toFixed(2) + " €" : "-"}</td>
                     <td className="px-4 py-2">{item.estimatedValue ? item.estimatedValue.toFixed(2) + " €" : "-"}</td>
@@ -389,12 +428,18 @@ export default function CollectionPage() {
                       )}
                     </td>
                     <td className="px-4 py-2 flex gap-2">
-                      <Button size="icon" variant="ghost" onClick={() => {/* TODO: édition inline */}} title="Éditer">
+                      <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); window.location.href = `/collection/${item.id}` }} title="Voir la fiche">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); /* TODO: édition inline */ }} title="Éditer">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L7.5 19.788l-4 1 1-4 13.362-13.3z" />
                         </svg>
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(item.id)} title="Supprimer">
+                      <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete(item.id) }} title="Supprimer">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>

@@ -55,6 +55,8 @@ export interface PokemonItem {
   // Champs pour la cote eBay
   coteActuelle?: number
   historiqueCote?: { date: string; valeur: number }[]
+  // Champs pour la gestion de la quantité
+  quantity?: number // Quantité de cet objet (par défaut 1)
 }
 
 export interface SaleRecord {

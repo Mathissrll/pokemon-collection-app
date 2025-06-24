@@ -31,6 +31,7 @@ export function ManualAddForm({ onAdd, isLoading = false }: ManualAddFormProps) 
     condition: "neuf" as PokemonItem["condition"],
     photo: "",
     notes: "",
+    quantity: 1,
   })
   const [planLimits, setPlanLimits] = useState<{ canAddItem: boolean; canAddPhoto: boolean; error?: string }>({
     canAddItem: true,
@@ -71,6 +72,7 @@ export function ManualAddForm({ onAdd, isLoading = false }: ManualAddFormProps) 
       isSold: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      quantity: Number(formData.quantity) || 1,
     })
   }
 
@@ -290,6 +292,23 @@ export function ManualAddForm({ onAdd, isLoading = false }: ManualAddFormProps) 
                 disabled={isLoading || !planLimits.canAddItem}
               />
             </div>
+          </div>
+
+          {/* Quantité */}
+          <div className="space-y-2">
+            <Label htmlFor="quantity" className="text-sm font-medium">
+              Quantité
+            </Label>
+            <Input
+              id="quantity"
+              type="number"
+              min={1}
+              value={formData.quantity}
+              onChange={(e) => setFormData((prev) => ({ ...prev, quantity: Math.max(1, Number(e.target.value)) }))}
+              required
+              disabled={isLoading || !planLimits.canAddItem}
+              className="h-10"
+            />
           </div>
 
           {/* Bouton de soumission */}

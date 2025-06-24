@@ -125,6 +125,29 @@ export class LocalStorage {
       photo = ""
     }
 
+    const collection = this.getCollection()
+    // Fusionner si même nom, type, langue, non vendu
+    const existingIndex = collection.findIndex(
+      (i) =>
+        i.name.trim().toLowerCase() === item.name.trim().toLowerCase() &&
+        i.type === item.type &&
+        i.language === item.language &&
+        !i.isSold
+    )
+    if (existingIndex !== -1) {
+      // Incrémenter la quantité
+      const existing = collection[existingIndex]
+      collection[existingIndex] = {
+        ...existing,
+        quantity: (existing.quantity || 1) + (item.quantity || 1),
+        updatedAt: new Date().toISOString(),
+      }
+      if (this.saveCollection(collection)) {
+        return collection[existingIndex]
+      }
+      return null
+    }
+    // Sinon, ajouter un nouvel objet
     const newItem: PokemonItem = {
       ...item,
       id: crypto.randomUUID(),
@@ -133,9 +156,9 @@ export class LocalStorage {
       photo: limits.canAddPhoto ? photo : "", // Forcer pas de photo pour le plan gratuit
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      quantity: item.quantity || 1,
     }
 
-    const collection = this.getCollection()
     collection.push(newItem)
     
     if (this.saveCollection(collection)) {
