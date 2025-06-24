@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { CreditCard, Apple, Shield, CheckCircle, Loader2, CreditCardIcon, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { PaymentService } from "@/lib/payment-service"
+import { loadStripe } from "@stripe/stripe-js"
+import { Elements } from "@stripe/react-stripe-js"
+import StripeCardForm from "@/components/StripeCardForm"
 
 interface PaymentModalProps {
   isOpen: boolean
@@ -69,6 +72,8 @@ const PREMIUM_FEATURES = [
   "Support prioritaire"
 ]
 
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+
 export function PaymentModal({ isOpen, onClose, onSuccess }: PaymentModalProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("card")
   const [paymentData, setPaymentData] = useState<PaymentData>({
@@ -85,6 +90,7 @@ export function PaymentModal({ isOpen, onClose, onSuccess }: PaymentModalProps) 
   const [loadingStripePayments, setLoadingStripePayments] = useState(false)
   const [showValidationModal, setShowValidationModal] = useState(false)
   const [validationSuccess, setValidationSuccess] = useState<boolean | null>(null)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -109,17 +115,8 @@ export function PaymentModal({ isOpen, onClose, onSuccess }: PaymentModalProps) 
     setIsProcessing(true)
     try {
       const paymentIntent = await PaymentService.createPaymentIntent(999, 'eur')
-      const success = paymentIntent && paymentIntent.id
-      setShowValidationModal(true)
-      setValidationSuccess(!!success)
+      setClientSecret(paymentIntent.client_secret)
       setIsProcessing(false)
-      if (success) {
-        setTimeout(() => {
-          setShowValidationModal(false)
-          onSuccess()
-          onClose()
-        }, 2000)
-      }
     } catch (error) {
       setShowValidationModal(true)
       setValidationSuccess(false)
@@ -364,27 +361,32 @@ export function PaymentModal({ isOpen, onClose, onSuccess }: PaymentModalProps) 
               <Button variant="outline" onClick={onClose} className="flex-1">
                 Annuler
               </Button>
-              <Button 
-                onClick={
-                  selectedMethod === "paypal" ? handlePayPalPayment :
-                  selectedMethod === "apple" || selectedMethod === "google" ? handleAppleGooglePay :
-                  handlePayment
-                }
-                disabled={isProcessing}
-                className="flex-1"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Traitement...
-                  </>
-                ) : (
-                  <>
-                    <Shield className="h-4 w-4 mr-2" />
-                    Payer 9,99€
-                  </>
-                )}
-              </Button>
+              {!clientSecret ? (
+                <Button onClick={handlePayment} disabled={isProcessing} className="flex-1">
+                  {isProcessing ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+                  Payer 9,99€
+                </Button>
+              ) : (
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <StripeCardForm
+                    clientSecret={clientSecret}
+                    onSuccess={() => {
+                      setShowValidationModal(true)
+                      setValidationSuccess(true)
+                      setTimeout(() => {
+                        setShowValidationModal(false)
+                        setClientSecret(null)
+                        onSuccess()
+                        onClose()
+                      }, 2000)
+                    }}
+                    onError={(err) => {
+                      setShowValidationModal(true)
+                      setValidationSuccess(false)
+                    }}
+                  />
+                </Elements>
+              )}
             </div>
 
             {/* Sécurité */}
