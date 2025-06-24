@@ -16,6 +16,8 @@ import { LANGUAGES } from "@/lib/languages"
 import { AuthService } from "@/lib/auth-service"
 import { EbaySoldListingsService, getMedianSoldPriceForItem } from "@/lib/ebay-sold-listings-service"
 import { AuthDialog } from "@/components/auth-dialog"
+import Papa from "papaparse"
+import type { ParseResult } from "papaparse"
 
 export default function CollectionPage() {
   const { toast } = useToast()
@@ -254,6 +256,53 @@ export default function CollectionPage() {
     loadCollection()
   }
 
+  // Import CSV
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results: ParseResult<any>) => {
+        let count = 0
+        for (const row of results.data as any[]) {
+          if (!row.Nom) continue
+          // Adapter les champs selon le CSV attendu
+          const itemData = {
+            name: row.Nom,
+            type: row.Type || "autre",
+            language: row.Langue || "francais",
+            purchaseDate: row["Date d'achat"] || new Date().toISOString().split("T")[0],
+            purchasePrice: parseFloat(row["Prix d'achat"] || "0"),
+            estimatedValue: parseFloat(row["Valeur estimée"] || row["Prix d'achat"] || "0"),
+            condition: "neuf" as const,
+            photo: undefined,
+            storageLocation: row.Localisation || "",
+            notes: undefined,
+            isSold: row.Statut === "Vendu",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            quantity: parseInt(row["Quantité"] || "1"),
+          }
+          await LocalStorage.addItem(itemData)
+          count++
+        }
+        loadCollection()
+        toast({
+          title: "Import terminé",
+          description: `${count} objets importés ou fusionnés dans la collection.`,
+        })
+      },
+      error: () => {
+        toast({
+          title: "Erreur d'import",
+          description: "Impossible de lire le fichier. Vérifiez le format.",
+          variant: "destructive",
+        })
+      }
+    })
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="container mx-auto px-4">
@@ -357,45 +406,55 @@ export default function CollectionPage() {
             <Button variant="outline" onClick={handleExport} title="Exporter en CSV">
               <Download className="mr-2 h-4 w-4" /> Exporter
             </Button>
+            <label className="inline-block">
+              <input type="file" accept=".csv" onChange={handleImport} className="hidden" />
+              <Button variant="outline" asChild>
+                <span><Download className="mr-2 h-4 w-4 rotate-180" />Importer</span>
+              </Button>
+            </label>
           </div>
         </div>
 
         {/* Tableau de collection */}
         <div className="overflow-x-auto rounded-lg shadow bg-white">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-100 dark:bg-gray-800">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Photo</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Nom</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Qté</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Langue</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Prix d'achat</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Valeur estimée</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Statut</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Actions</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Photo</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Nom</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Qté</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Langue</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Prix d'achat</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Valeur estimée</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Statut</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-gray-400">
+                  <td colSpan={8} className="text-center py-8 text-gray-400 dark:text-gray-500">
                     <AlertCircle className="inline mr-2" />Aucun objet trouvé dans la collection.
                   </td>
                 </tr>
               ) : (
-                filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50 transition cursor-pointer" onClick={() => window.location.href = `/collection/${item.id}` }>
+                filteredItems.map((item, idx) => (
+                  <tr
+                    key={item.id}
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition cursor-pointer ${idx % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}`}
+                    onClick={() => window.location.href = `/collection/${item.id}` }
+                  >
                     <td className="px-4 py-2">
                       {item.photo ? (
                         <img src={item.photo} alt={item.name} className="w-12 h-12 object-cover rounded shadow" />
                       ) : (
-                        <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-gray-400">
+                        <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-gray-400">
                           <Package />
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-2 font-medium text-gray-900">{item.name}</td>
-                    <td className="px-4 py-2 text-center" onClick={(e) => { e.stopPropagation(); handleEditQuantity(item) }} style={{ cursor: "pointer" }}>
+                    <td className="px-4 py-2 font-medium text-gray-900 dark:text-gray-100">{item.name}</td>
+                    <td className="px-4 py-2 text-center font-semibold text-gray-900 dark:text-gray-100" onClick={(e) => { e.stopPropagation(); handleEditQuantity(item) }} style={{ cursor: "pointer" }}>
                       {editingId === item.id ? (
                         <input
                           type="number"
@@ -405,11 +464,11 @@ export default function CollectionPage() {
                           onChange={e => setEditingQuantity(Math.max(1, Number(e.target.value)))}
                           onBlur={() => handleSaveQuantity(item)}
                           onKeyDown={e => { if (e.key === "Enter") { (e.target as HTMLInputElement).blur() }}}
-                          className="w-16 px-2 py-1 border rounded text-center"
+                          className="w-16 px-2 py-1 border rounded text-center bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                         />
                       ) : (
                         (item.quantity || 1) > 1 ? (
-                          <span className="inline-block px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 font-semibold">
+                          <span className="inline-block px-2 py-1 text-xs rounded bg-blue-600/10 text-blue-800 dark:bg-blue-400/20 dark:text-blue-200 font-semibold">
                             {item.quantity}
                           </span>
                         ) : (
@@ -417,14 +476,14 @@ export default function CollectionPage() {
                         )
                       )}
                     </td>
-                    <td className="px-4 py-2">{LANGUAGES.find(l => l.code === item.language)?.name || item.language}</td>
-                    <td className="px-4 py-2">{item.purchasePrice ? item.purchasePrice.toFixed(2) + " €" : "-"}</td>
-                    <td className="px-4 py-2">{item.estimatedValue ? item.estimatedValue.toFixed(2) + " €" : "-"}</td>
+                    <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{LANGUAGES.find(l => l.code === item.language)?.name || item.language}</td>
+                    <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{item.purchasePrice ? item.purchasePrice.toFixed(2) + " €" : "-"}</td>
+                    <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{item.estimatedValue ? item.estimatedValue.toFixed(2) + " €" : "-"}</td>
                     <td className="px-4 py-2">
                       {item.isSold ? (
-                        <span className="inline-block px-2 py-1 text-xs rounded bg-red-100 text-red-700">Vendu</span>
+                        <span className="inline-block px-2 py-1 text-xs rounded bg-red-600/10 text-red-800 dark:bg-red-400/20 dark:text-red-200">Vendu</span>
                       ) : (
-                        <span className="inline-block px-2 py-1 text-xs rounded bg-green-100 text-green-700">Disponible</span>
+                        <span className="inline-block px-2 py-1 text-xs rounded bg-green-600/10 text-green-800 dark:bg-green-400/20 dark:text-green-200">Disponible</span>
                       )}
                     </td>
                     <td className="px-4 py-2 flex gap-2">
