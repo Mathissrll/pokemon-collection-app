@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { getUserFromApiRequest } from "@/lib/auth-service"
 
 // En production, installez Stripe : npm install stripe
 
@@ -8,6 +9,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 })
 
 export async function POST(request: NextRequest) {
+  const user = getUserFromApiRequest(request)
+  if (!user) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
+  }
   try {
     const { amount, currency = 'eur' } = await request.json()
 
@@ -29,7 +34,7 @@ export async function POST(request: NextRequest) {
       },
       metadata: {
         plan: 'premium',
-        userId: 'demo-user', // En production, utiliser l'ID utilisateur réel
+        userId: user.id, // Utilise le vrai userId
       },
     })
 

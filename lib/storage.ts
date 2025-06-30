@@ -374,4 +374,18 @@ export class LocalStorage {
   static getCurrentUser() {
     return AuthService.getCurrentUser()
   }
+
+  static deleteCurrentUserAndData() {
+    const user = AuthService.getCurrentUser()
+    if (!user) return
+    // Supprime l'utilisateur
+    const users = AuthService.getUsers()
+    delete users[user.id]
+    localStorage.setItem("pokemon-users", JSON.stringify(users))
+    // Supprime la collection et settings associés
+    localStorage.removeItem("pokemon-collection")
+    localStorage.removeItem("pokemon-settings")
+    // Déconnecte
+    localStorage.removeItem("pokemon-auth")
+  }
 }

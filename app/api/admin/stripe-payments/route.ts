@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { getUserFromApiRequest } from "@/lib/auth-service"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-05-28.basil',
 })
 
 export async function GET(req: NextRequest) {
+  const user = getUserFromApiRequest(req)
+  if (!user || !user.isAdmin) {
+    return NextResponse.json({ error: "Accès interdit" }, { status: 403 })
+  }
   try {
     // On récupère les 50 derniers paiements Stripe (charges)
     const paymentIntents = await stripe.paymentIntents.list({ limit: 50 })

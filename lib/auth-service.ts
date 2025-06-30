@@ -21,6 +21,9 @@ export interface User {
     language: "fr" | "en"
   }
   passwordHash?: string
+  // Confirmation email
+  isEmailConfirmed?: boolean
+  emailConfirmationToken?: string
 }
 
 export interface AuthState {
@@ -226,6 +229,9 @@ export class AuthService {
         publicProfile: false,
         language: "fr",
       },
+      // Confirmation email
+      isEmailConfirmed: false,
+      emailConfirmationToken: crypto.randomUUID(),
     }
 
     // Sauvegarder l'utilisateur
@@ -367,6 +373,20 @@ export class AuthService {
       totalUsers: users.length,
       newUsersThisMonth: users.filter((u) => new Date(u.createdAt) >= thisMonth).length,
       premiumUsers: users.filter((u) => u.plan === "premium").length,
+    }
+  }
+
+  // Utilitaire pour les routes API (Node)
+  static getUserFromApiRequest(req: Request | { headers: { get: (name: string) => string | null } }) {
+    try {
+      const authHeader = req.headers.get("authorization")
+      if (!authHeader) return null
+      const userId = authHeader.replace("Bearer ", "")
+      if (typeof window !== "undefined") return null // sécurité côté serveur uniquement
+      const users = JSON.parse(localStorage.getItem("pokemon-users") || "{}")
+      return users[userId] || null
+    } catch {
+      return null
     }
   }
 }

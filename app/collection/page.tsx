@@ -18,6 +18,7 @@ import { EbaySoldListingsService, getMedianSoldPriceForItem } from "@/lib/ebay-s
 import { AuthDialog } from "@/components/auth-dialog"
 import Papa from "papaparse"
 import type { ParseResult } from "papaparse"
+import { ConfirmEmailPrompt } from "@/components/confirm-email-prompt"
 
 export default function CollectionPage() {
   const { toast } = useToast()
@@ -32,10 +33,12 @@ export default function CollectionPage() {
   const [isUpdatingPrices, setIsUpdatingPrices] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingQuantity, setEditingQuantity] = useState<number>(1)
+  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
     const checkAuth = () => {
       const user = LocalStorage.getCurrentUser()
+      setUser(user)
       setIsLoggedIn(!!user)
     }
     
@@ -327,6 +330,24 @@ export default function CollectionPage() {
         })
       }
     })
+  }
+
+  // Protection email non confirmé
+  if (user && user.isEmailConfirmed === false) {
+    return (
+      <div className="container mx-auto px-4 max-w-2xl flex flex-col items-center justify-center min-h-[80vh]">
+        <ConfirmEmailPrompt
+          email={user.email}
+          onResend={async () => {
+            await fetch("/api/send-confirmation", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: user.email, username: user.username, token: user.emailConfirmationToken })
+            })
+          }}
+        />
+      </div>
+    )
   }
 
   if (!isLoggedIn) {

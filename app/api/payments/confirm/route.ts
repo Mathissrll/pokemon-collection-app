@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { getUserFromApiRequest } from "@/lib/auth-service"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-05-28.basil',
 })
 
 export async function POST(request: NextRequest) {
+  const user = getUserFromApiRequest(request)
+  if (!user) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
+  }
+
   try {
     const { paymentIntentId, paymentMethodId } = await request.json()
 

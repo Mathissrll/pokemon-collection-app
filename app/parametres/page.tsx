@@ -19,6 +19,7 @@ import { ShareCollection } from "@/components/share-collection"
 import { SyncStats } from "@/components/sync-stats"
 import { AuthDialog } from "@/components/auth-dialog"
 import { PlanInfo } from "@/components/plan-info"
+import { ConfirmEmailPrompt } from "@/components/confirm-email-prompt"
 
 export default function ParametresPage() {
   const { theme, setTheme } = useTheme()
@@ -30,11 +31,13 @@ export default function ParametresPage() {
   })
   const [mounted, setMounted] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
     setMounted(true)
     const checkAuth = () => {
       const user = LocalStorage.getCurrentUser()
+      setUser(user)
       setIsLoggedIn(!!user)
     }
     
@@ -184,6 +187,24 @@ export default function ParametresPage() {
       title: "Connexion réussie",
       description: "Vous pouvez maintenant accéder à vos paramètres.",
     })
+  }
+
+  // Protection email non confirmé
+  if (user && user.isEmailConfirmed === false) {
+    return (
+      <div className="container mx-auto px-4 max-w-2xl flex flex-col items-center justify-center min-h-[80vh]">
+        <ConfirmEmailPrompt
+          email={user.email}
+          onResend={async () => {
+            await fetch("/api/send-confirmation", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: user.email, username: user.username, token: user.emailConfirmationToken })
+            })
+          }}
+        />
+      </div>
+    )
   }
 
   if (!mounted) {

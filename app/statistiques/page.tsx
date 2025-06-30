@@ -13,12 +13,14 @@ import { LanguageStats } from "@/components/language-stats"
 import { PhotoStats } from "@/components/photo-stats"
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ConfirmEmailPrompt } from "@/components/confirm-email-prompt"
 
 export default function StatistiquesPage() {
   const [invested, setInvested] = useState(0)
   const [sold, setSold] = useState(0)
   const [items, setItems] = useState<PokemonItem[]>([])
   const [chartData, setChartData] = useState<Array<{ month: string; invested: number; sold: number; stock: number }>>([])
+  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
     const collection = LocalStorage.getCollection()
@@ -26,6 +28,11 @@ export default function StatistiquesPage() {
     setInvested(collection.reduce((sum, item) => sum + item.purchasePrice * (item.quantity || 1), 0))
     setSold(collection.filter(i => i.isSold).reduce((sum, item) => sum + (item.saleRecord?.salePrice || 0), 0))
     setChartData(generateChartData(collection))
+  }, [])
+
+  useEffect(() => {
+    const user = LocalStorage.getCurrentUser()
+    setUser(user)
   }, [])
 
   // Générer les données pour les graphiques
@@ -56,6 +63,24 @@ export default function StatistiquesPage() {
     }))
     .sort((a, b) => b.profitLossPercentage - a.profitLossPercentage)
     .slice(0, 3)
+
+  // Protection email non confirmé
+  if (user && user.isEmailConfirmed === false) {
+    return (
+      <div className="container mx-auto px-4 max-w-2xl flex flex-col items-center justify-center min-h-[80vh]">
+        <ConfirmEmailPrompt
+          email={user.email}
+          onResend={async () => {
+            await fetch("/api/send-confirmation", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: user.email, username: user.username, token: user.emailConfirmationToken })
+            })
+          }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-4 max-w-4xl">

@@ -18,20 +18,21 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 interface ManualAddFormProps {
   onAdd: (data: Omit<PokemonItem, "id" | "addedDate">) => void
   isLoading?: boolean
+  initialData?: Partial<PokemonItem>
 }
 
-export function ManualAddForm({ onAdd, isLoading = false }: ManualAddFormProps) {
+export function ManualAddForm({ onAdd, isLoading = false, initialData }: ManualAddFormProps) {
   const { toast } = useToast()
   const [formData, setFormData] = useState({
-    name: "",
-    type: "booster-pack" as PokemonItem["type"],
-    language: "francais" as PokemonItem["language"],
-    purchaseDate: new Date().toISOString().split("T")[0],
-    purchasePrice: "",
-    condition: "neuf" as PokemonItem["condition"],
-    photo: "",
-    notes: "",
-    quantity: 1,
+    name: initialData?.name || "",
+    type: initialData?.type || "booster-pack" as PokemonItem["type"],
+    language: initialData?.language || "francais" as PokemonItem["language"],
+    purchaseDate: initialData?.purchaseDate || new Date().toISOString().split("T")[0],
+    purchasePrice: initialData?.purchasePrice?.toString() || "",
+    condition: initialData?.condition || "neuf" as PokemonItem["condition"],
+    photo: initialData?.photo || "",
+    notes: initialData?.notes || "",
+    quantity: initialData?.quantity || 1,
   })
   const [planLimits, setPlanLimits] = useState<{ canAddItem: boolean; canAddPhoto: boolean; error?: string }>({
     canAddItem: true,
@@ -42,6 +43,23 @@ export function ManualAddForm({ onAdd, isLoading = false }: ManualAddFormProps) 
     const limits = LocalStorage.checkPlanLimits()
     setPlanLimits(limits)
   }, [])
+
+  // Si initialData change (édition d'un autre objet), mettre à jour le formulaire
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || "",
+        type: initialData.type || "booster-pack",
+        language: initialData.language || "francais",
+        purchaseDate: initialData.purchaseDate || new Date().toISOString().split("T")[0],
+        purchasePrice: initialData.purchasePrice?.toString() || "",
+        condition: initialData.condition || "neuf",
+        photo: initialData.photo || "",
+        notes: initialData.notes || "",
+        quantity: initialData.quantity || 1,
+      })
+    }
+  }, [initialData])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
