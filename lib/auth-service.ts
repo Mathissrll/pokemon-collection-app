@@ -390,3 +390,6 @@ export class AuthService {
     }
   }
 }
+
+// Export explicite pour les routes API Next.js
+export const getUserFromApiRequest = AuthService.getUserFromApiRequest
