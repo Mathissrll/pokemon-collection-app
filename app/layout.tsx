@@ -64,7 +64,6 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'PokéCollection',
   },
-  themeColor: '#2563eb',
 }
 
 export const viewport = {
@@ -73,6 +72,8 @@ export const viewport = {
   maximumScale: 1,
   userScalable: false,
 }
+
+export const themeColor = '#2563eb'
 
 export default function RootLayout({
   children,
