@@ -160,6 +160,7 @@ export async function getMedianSoldPriceForItem(name: string, language: string):
   const url = `https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findCompletedItems&SERVICE-VERSION=1.13.0&SECURITY-APPNAME=${EBAY_APP_ID}&RESPONSE-DATA-FORMAT=JSON&keywords=${encodeURIComponent(searchTerm)}&categoryId=2606&itemFilter(0).name=SoldItemsOnly&itemFilter(0).value=true`
   const res = await fetch(url)
   const data = await res.json()
+  console.log('eBay API response:', JSON.stringify(data, null, 2))
   const items = data.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item || []
   const listings: EbaySoldListing[] = items.map((item: any) => ({
     title: item.title?.[0] || '',
