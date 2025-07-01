@@ -1,3 +1,5 @@
+const EBAY_APP_ID = process.env.EBAY_APP_ID
+
 // Service pour rechercher les ventes réussies eBay avec terme exact
 export interface EbaySoldListing {
   title: string
@@ -154,15 +156,28 @@ export class EbaySoldListingsService {
 
 // Fonction utilitaire pour récupérer la médiane des prix de vente eBay pour un item donné
 export async function getMedianSoldPriceForItem(name: string, language: string): Promise<{ median: number, listings: EbaySoldListing[] }> {
-  // On construit le terme de recherche avec la langue
   const searchTerm = `${name} ${language}`.trim()
-  // On récupère toutes les ventes simulées (en adaptant searchSoldListings si besoin)
-  // Ici, on va utiliser la logique de génération interne
-  const listings = EbaySoldListingsService["generateMockSoldListings"](searchTerm) as EbaySoldListing[]
+  const url = `https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findCompletedItems&SERVICE-VERSION=1.13.0&SECURITY-APPNAME=${EBAY_APP_ID}&RESPONSE-DATA-FORMAT=JSON&keywords=${encodeURIComponent(searchTerm)}&categoryId=2606&itemFilter(0).name=SoldItemsOnly&itemFilter(0).value=true`
+  const res = await fetch(url)
+  const data = await res.json()
+  const items = data.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item || []
+  const listings: EbaySoldListing[] = items.map((item: any) => ({
+    title: item.title?.[0] || '',
+    soldPrice: parseFloat(item.sellingStatus?.[0]?.currentPrice?.[0]?.__value__ || '0'),
+    soldDate: item.listingInfo?.[0]?.endTime?.[0]?.split('T')[0] || '',
+    condition: item.condition?.[0]?.conditionDisplayName?.[0] || '',
+    shipping: parseFloat(item.shippingInfo?.[0]?.shippingServiceCost?.[0]?.__value__ || '0'),
+    location: item.location?.[0] || '',
+    seller: {
+      name: item.sellerInfo?.[0]?.sellerUserName?.[0] || '',
+      feedback: parseInt(item.sellerInfo?.[0]?.feedbackScore?.[0] || '0'),
+      feedbackPercentage: parseFloat(item.sellerInfo?.[0]?.positiveFeedbackPercent?.[0] || '0'),
+    },
+    imageUrl: item.galleryURL?.[0] || '',
+    listingUrl: item.viewItemURL?.[0] || '',
+  }))
   if (!listings.length) return { median: 0, listings: [] }
-  // On extrait les prix
   const prices = listings.map(l => l.soldPrice).sort((a, b) => a - b)
-  // Calcul de la médiane
   const mid = Math.floor(prices.length / 2)
   const median = prices.length % 2 !== 0 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2
   return { median, listings }
