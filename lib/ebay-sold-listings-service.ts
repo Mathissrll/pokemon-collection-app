@@ -156,11 +156,9 @@ export class EbaySoldListingsService {
 
 // Fonction utilitaire pour récupérer la médiane des prix de vente eBay pour un item donné
 export async function getMedianSoldPriceForItem(name: string, language: string): Promise<{ median: number, listings: EbaySoldListing[] }> {
-  const searchTerm = `${name} ${language}`.trim()
-  const url = `https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findCompletedItems&SERVICE-VERSION=1.13.0&SECURITY-APPNAME=${EBAY_APP_ID}&RESPONSE-DATA-FORMAT=JSON&keywords=${encodeURIComponent(searchTerm)}&categoryId=2606&itemFilter(0).name=SoldItemsOnly&itemFilter(0).value=true`
-  const res = await fetch(url)
+  // Appel à l'API interne Next.js
+  const res = await fetch(`/api/ebay-cote?name=${encodeURIComponent(name)}&language=${encodeURIComponent(language)}`)
   const data = await res.json()
-  console.log('eBay API response:', JSON.stringify(data, null, 2))
   const items = data.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item || []
   const listings: EbaySoldListing[] = items.map((item: any) => ({
     title: item.title?.[0] || '',
