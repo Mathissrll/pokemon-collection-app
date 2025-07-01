@@ -11,6 +11,8 @@ import { useRouter } from 'next/navigation'
 import { LocalStorage } from '@/lib/storage'
 import { AuthService } from '@/lib/auth-service'
 import { PaymentModal } from '@/components/payment-modal'
+import { getMedianSoldPriceForItem } from '@/lib/ebay-sold-listings-service'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 export default function CollectionItemPage({ params }: { params: Promise<{ id: string }> }) {
   const [item, setItem] = useState<any>(null)
@@ -18,6 +20,8 @@ export default function CollectionItemPage({ params }: { params: Promise<{ id: s
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const router = useRouter()
   const resolvedParams = use(params)
+  const [ebayData, setEbayData] = useState<{ median: number, listings: any[] }|null>(null)
+  const [ebayLoading, setEbayLoading] = useState(false)
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -31,29 +35,13 @@ export default function CollectionItemPage({ params }: { params: Promise<{ id: s
       const collection = LocalStorage.getCollection()
       const foundItem = collection.find((i: any) => i.id === resolvedParams.id) || null
       
-      // Ajouter des données de test temporaires pour la cote eBay
       if (foundItem) {
-        const basePrice = 100 // Prix de base autour de 100€
-        const variations = [0.85, 0.92, 0.98, 1.05, 1.12, 0.89, 1.08, 0.95, 1.03, 0.97, 1.06, 0.91, 1.04, 0.96, 1.09]
-        
-        // Générer un historique de cote sur les 30 derniers jours
-        const historiqueCote = []
-        for (let i = 29; i >= 0; i--) {
-          const date = new Date()
-          date.setDate(date.getDate() - i)
-          const variation = variations[i % variations.length]
-          const prix = Math.round(basePrice * variation * 100) / 100
-          historiqueCote.push({
-            date: date.toISOString(),
-            valeur: prix
-          })
-        }
-        
-        // Mettre à jour l'item avec les données de test
-        foundItem.coteActuelle = Math.round(basePrice * 1.02 * 100) / 100 // Cote actuelle légèrement au-dessus
-        foundItem.historiqueCote = historiqueCote
-        
         setItem(foundItem)
+        // Appel à la vraie API eBay
+        setEbayLoading(true)
+        getMedianSoldPriceForItem(foundItem.name, foundItem.language).then(res => {
+          setEbayData(res)
+        }).finally(() => setEbayLoading(false))
       } else {
         setItem(null)
       }
@@ -191,21 +179,36 @@ export default function CollectionItemPage({ params }: { params: Promise<{ id: s
           </div>
         )}
 
-        {Array.isArray(item.historiqueCote) && item.historiqueCote.length > 1 && currentUser.plan === "premium" && (
-          <div className="mt-8 w-full">
-            <div className="text-xs font-semibold mb-1 text-blue-700 dark:text-blue-300">Historique cote eBay (TEST)</div>
-            <ChartContainer config={{ cote: { label: "Cote eBay", color: "#2563eb" } }}>
-              {({ ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip }: any) => (
-                <ResponsiveContainer width="100%" height={120}>
-                  <LineChart data={item.historiqueCote.map((h: any) => ({ ...h, date: h.date.slice(0, 10) }))}>
-                    <XAxis dataKey="date" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis fontSize={10} tickLine={false} axisLine={false} width={30} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="valeur" stroke="#2563eb" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </ChartContainer>
+        {/* Cote eBay réelle */}
+        {currentUser.plan === "premium" && (
+          <div className="mt-6 w-full">
+            <div className="text-xs font-semibold mb-1 text-blue-700 dark:text-blue-300">Cote eBay (réelle)</div>
+            {ebayLoading ? (
+              <div className="text-gray-400 text-xs">Chargement de la cote eBay...</div>
+            ) : ebayData && ebayData.median ? (
+              <>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-bold">Prix médian :</span>
+                  <span className="text-blue-700 dark:text-blue-300 font-semibold">{formatCurrency(ebayData.median)}</span>
+                </div>
+                <div className="text-xs text-gray-500 mb-2">{ebayData.listings.length} ventes analysées</div>
+                {ebayData.listings.length > 0 && (
+                  <div className="w-full h-32">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={ebayData.listings.slice(0, 10).reverse()} margin={{ left: 0, right: 0, top: 10, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="soldDate" tick={{ fontSize: 10 }} hide={false} />
+                        <YAxis tick={{ fontSize: 10 }} width={30} />
+                        <Tooltip formatter={(value) => `${value} €`} labelFormatter={d => `Date : ${d}`} />
+                        <Line type="monotone" dataKey="soldPrice" stroke="#2563eb" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-gray-400 text-xs">Aucune cote eBay trouvée</div>
+            )}
           </div>
         )}
 
